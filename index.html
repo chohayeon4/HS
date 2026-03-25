@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1e40af" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="기탁서 생성기" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="description" content="학교발전기금기탁서를 아이폰 홈 화면 앱처럼 빠르게 생성하고 PDF로 저장하는 도구" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+  <title>학교발전기금기탁서 일괄 생성기</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- 서울남산체 M (서울시 공식 웹폰트) -->
+  <style>
+    @font-face {
+      font-family: 'SeoulNamsanM';
+      src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/SeoulNamsanM.woff') format('woff');
+      font-weight: normal;
+      font-style: normal;
+    }
+  </style>
+  <style>
+    :root {
+      --bg: #f0f2f8;
+      --card: #ffffff;
+      --line: #dde1ee;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #1e40af;
+      --accent2: #3b82f6;
+      --success: #059669;
+      --warm: #fef3c7;
+      --border-radius: 16px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Pretendard', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── 헤더 ── */
+    .app-header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #3b82f6 100%);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 4px 20px rgba(30,58,138,0.25);
+    }
+    .app-header .icon {
+      width: 44px; height: 44px;
+      background: rgba(255,255,255,0.18);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .app-header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.3px;
+    }
+    .app-header .subtitle {
+      font-size: 13px;
+      color: rgba(255,255,255,0.72);
+      margin-top: 2px;
+    }
+
+    /* ── 레이아웃 ── */
+    .wrap {
+      max-width: 1340px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    /* ── 사이드 패널 ── */
+    .panel {
+      background: var(--card);
+      border-radius: var(--border-radius);
+      box-shadow: 0 4px 24px rgba(15,23,42,0.08);
+      overflow: hidden;
+      position: sticky;
+      top: 20px;
+    }
+    .panel-section {
+      padding: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-section:last-child { border-bottom: none; }
+
+    /* ── 입력모드 탭 ── */
+    .mode-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border-bottom: 2px solid var(--line);
+      margin: 0;
+    }
+    .mode-tab {
+      padding: 12px 8px;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+      color: var(--muted);
+      border: none;
+      background: #f8faff;
+      transition: color 0.15s, background 0.15s;
+      font-family: inherit;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+    }
+    .mode-tab:first-child { border-radius: 16px 0 0 0; }
+    .mode-tab:last-child  { border-radius: 0 16px 0 0; }
+    .mode-tab.active {
+      color: var(--accent);
+      background: #fff;
+      border-bottom-color: var(--accent);
+    }
+    .mode-pane { display: none; }
+    .mode-pane.active { display: block; }
+    .section-head {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-head::before {
+      content: '';
+      width: 3px; height: 14px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    .group { margin-bottom: 12px; }
+    .group:last-child { margin-bottom: 0; }
+    .group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+    input[type="text"], input[type="file"], textarea, select {
+      width: 100%;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-size: 13.5px;
+      font-family: inherit;
+      background: #fafbff;
+      color: var(--text);
+      transition: border-color 0.18s, box-shadow 0.18s;
+      outline: none;
+    }
+    input:focus, textarea:focus {
+      border-color: var(--accent2);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+    }
+    input[type="file"] {
+      padding: 8px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    textarea { min-height: 60px; resize: vertical; }
+
+    /* ── 버튼 ── */
+    .btn {
+      width: 100%;
+      border: 0;
+      border-radius: 11px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: transform 0.12s, box-shadow 0.12s, opacity 0.12s;
+      font-family: inherit;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn.primary {
+      background: linear-gradient(135deg, #1e40af, #2563eb);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+    }
+    .btn.primary:hover { box-shadow: 0 6px 20px rgba(37,99,235,0.45); }
+    .btn.secondary {
+      background: #eff6ff;
+      color: #1e40af;
+      border: 1.5px solid #bfdbfe;
+    }
+    .btn.secondary:hover { background: #dbeafe; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── 상태 ── */
+    .status-bar {
+      padding: 12px 16px;
+      background: #f8faff;
+      border-top: 1px solid var(--line);
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.5;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-bar.active { color: var(--accent); }
+    .status-bar.done { color: var(--success); }
+    .status-bar.error { color: #dc2626; }
+
+    /* 프로그레스 바 */
+    .progress-wrap {
+      height: 3px;
+      background: var(--line);
+      border-radius: 2px;
+      margin: 0;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #1e40af, #3b82f6);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* 샘플 박스 */
+    .sample-box {
+      background: #f8faff;
+      border: 1px dashed #bfdbfe;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 11.5px;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      color: #334155;
+    }
+
+    /* ── 미리보기 영역 ── */
+    .preview-card {
+      background: var(--card);
+      border-radius: var(--border-radius);
+      box-shadow: 0 4px 24px rgba(15,23,42,0.08);
+      overflow: hidden;
+    }
+    .preview-header {
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .preview-header h2 {
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      background: #dbeafe;
+      color: #1e40af;
+      border-radius: 20px;
+    }
+
+    .a4-stage {
+      display: flex;
+      justify-content: center;
+      background: #d1d5db;
+      padding: 28px;
+      overflow: auto;
+    }
+
+    /* ── A4 문서 전체: 서울남산체M 강제 상속 ── */
+    .doc-page, .doc-page * {
+      font-family: 'SeoulNamsanM', 'Malgun Gothic', sans-serif !important;
+    }
+
+    /* ── A4 문서 ── */
+    .doc-page {
+      width: 210mm;
+      min-height: 297mm;
+      background: #fff;
+      color: #000;
+      padding: 16mm 18mm 16mm;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* 규칙 레이블 */
+    .rule-label {
+      font-size: 10pt;
+      margin-bottom: 16px;
+    }
+
+    /* 제목 20pt */
+    .doc-title {
+      text-align: center;
+      font-size: 20pt;
+      font-weight: 700;
+      letter-spacing: 6px;
+      margin-bottom: 24px;
+    }
+
+    /* 소제목 14pt */
+    .section-title {
+      font-size: 14pt;
+      font-weight: 700;
+      margin: 16px 0 6px;
+    }
+
+    /* 인적사항 테이블 — 본문 13pt, 선 굵기 통일 */
+    .form-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13pt;
+      table-layout: fixed;
+    }
+    .form-table th,
+    .form-table td {
+      border: 1.2pt solid #000;
+      padding: 4px 10px;
+      vertical-align: middle;
+      line-height: 1.4;
+    }
+    .form-table th {
+      width: 26%;
+      text-align: center;
+      font-weight: 700;
+      background: #fff;
+      letter-spacing: 2px;
+    }
+
+    /* 물품 테이블 — 4칸 균등 25% */
+    .item-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13pt;
+      table-layout: fixed;
+      margin-top: 6px;
+    }
+    .item-table th,
+    .item-table td {
+      border: 1.2pt solid #000;
+      padding: 4px 10px;
+      text-align: center;
+      vertical-align: middle;
+      line-height: 1.4;
+      width: 25%;
+    }
+    .item-table th { font-weight: 700; background: #fff; }
+    .item-table td { height: 36px; }
+
+    /* 사용용도 박스 — 본문 13pt */
+    .purpose-box {
+      border: 1.2pt solid #000;
+      padding: 10px 14px;
+      font-size: 13pt;
+      line-height: 2.0;
+    }
+    .purpose-box .checked { font-weight: 700; }
+
+    .note {
+      font-size: 10pt;
+      margin-top: 6px;
+      line-height: 1.6;
+    }
+
+    /* 본문 13pt */
+    .body-text {
+      text-align: center;
+      font-size: 13pt;
+      line-height: 2;
+      margin-top: 32px;
+      word-break: keep-all;
+    }
+
+    /* 날짜 13pt */
+    .date-line {
+      text-align: center;
+      font-size: 13pt;
+      margin-top: 40px;
+      letter-spacing: 2px;
+    }
+
+    /* 서명란 13pt */
+    .sign-area {
+      margin-top: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 13pt;
+      position: relative;
+    }
+    .sign-label { white-space: nowrap; }
+    .sign-name  { white-space: nowrap; }
+
+    /* (서명 또는 인) 컨테이너 — 직인 절대 위치 기준점 */
+    .sign-stamp-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+    .sign-suffix { white-space: nowrap; }
+
+    /* 직인: 3cm × 3cm, (서명 또는 인) 위에 겹침 */
+    .seal-img {
+      width:  113px;
+      height: 113px;
+      object-fit: contain;
+      opacity: 0.90;
+      display: none;
+      position: absolute;
+      left: 50%;
+      top:  50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .seal-img.show { display: block; }
+
+    /* 수신란 14pt 좌측 */
+    .footer-line {
+      text-align: left;
+      font-size: 14pt;
+      font-weight: 700;
+      margin-top: 52px;
+      letter-spacing: 1px;
+    }
+
+    /* ── 반응형 ── */
+    @media (max-width: 1100px) {
+      .wrap { grid-template-columns: 1fr; }
+      .panel { position: static; }
+      .a4-stage { padding: 10px; }
+      .doc-page {
+        transform: scale(0.65);
+        transform-origin: top center;
+        margin-bottom: calc((297mm * 0.65 - 297mm) * 1px);
+      }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .wrap { display: block; padding: 0; max-width: none; }
+      .panel, .preview-header, .app-header { display: none !important; }
+      .preview-card { box-shadow: none; padding: 0; background: #fff; }
+      .a4-stage { background: #fff; padding: 0; }
+      .doc-page { box-shadow: none; }
+      @page { size: A4; margin: 0; }
+    }
+
+    /* ── 토스트 ── */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #0f172a;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      opacity: 0;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .toast.success { background: #065f46; }
+    .toast.error { background: #7f1d1d; }
+
+
+    /* ── 앱형 상단/모바일 최적화 ── */
+    body {
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .app-shell {
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding-top: calc(20px + env(safe-area-inset-top, 0px));
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+    .app-header.compact {
+      padding: 14px 18px 10px;
+    }
+    .app-header .header-text { min-width: 0; }
+    .install-chip {
+      margin-left: auto;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.16);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: -0.1px;
+      white-space: nowrap;
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    .mobile-actions {
+      display: none;
+      position: sticky;
+      bottom: 0;
+      z-index: 120;
+      padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+      background: rgba(240,242,248,0.9);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid rgba(148,163,184,0.25);
+      gap: 10px;
+    }
+    .mobile-actions .btn {
+      margin-top: 0;
+      flex: 1;
+      min-height: 48px;
+      border-radius: 14px;
+    }
+    .mobile-helper {
+      display: none;
+      margin: 0 24px 18px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .fab-top {
+      position: fixed;
+      right: 16px;
+      bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: #0f172a;
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(15,23,42,0.25);
+      cursor: pointer;
+      display: none;
+      z-index: 125;
+      font-size: 18px;
+    }
+
+    @media (max-width: 820px) {
+      .app-header {
+        padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 14px;
+        gap: 10px;
+      }
+      .app-header .icon {
+        width: 40px; height: 40px; font-size: 20px; border-radius: 11px;
+        flex: 0 0 auto;
+      }
+      .app-header h1 { font-size: 17px; line-height: 1.25; }
+      .app-header .subtitle { font-size: 12px; }
+      .install-chip { display: none; }
+      .wrap {
+        padding: 14px;
+        gap: 14px;
+      }
+      .panel, .preview-card { border-radius: 18px; }
+      .panel-section { padding: 16px; }
+      .preview-header {
+        padding: 14px 16px;
+        position: sticky;
+        top: calc(74px + env(safe-area-inset-top, 0px));
+        z-index: 60;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+      .preview-header h2 { font-size: 15px; }
+      .a4-stage {
+        padding: 12px 8px 18px;
+        align-items: flex-start;
+      }
+      .doc-page {
+        width: 210mm;
+        transform: scale(0.36);
+        transform-origin: top center;
+        margin-bottom: -190mm;
+      }
+      .mobile-actions, .mobile-helper, .fab-top { display: flex; }
+      .fab-top { display: inline-flex; align-items: center; justify-content: center; }
+      .status-bar { min-height: 52px; align-items: flex-start; padding-top: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+
+  <!-- 헤더 -->
+  <header class="app-header" id="appHeader">
+    <div class="icon">📋</div>
+    <div class="header-text">
+      <h1>학교발전기금기탁서 생성기</h1>
+      <div class="subtitle">아이폰 홈 화면에서도 앱처럼 바로 실행</div>
+    </div>
+    <div class="install-chip" id="installChip">Safari 공유 → 홈 화면에 추가</div>
+  </header>
+
+  <div class="mobile-helper" id="mobileHelper">아이폰에서는 Safari의 공유 버튼을 눌러 <b>홈 화면에 추가</b>하면 전체화면 앱처럼 실행됩니다.</div>
+
+  <div class="wrap">
+
+    <!-- 사이드 패널 -->
+    <aside class="panel">
+
+      <!-- 입력 방식 탭 -->
+      <div style="background:#f8faff;">
+        <div class="mode-tabs">
+          <button class="mode-tab active" onclick="switchMode('excel')">📊 엑셀 업로드</button>
+          <button class="mode-tab"        onclick="switchMode('manual')">✏️ 직접 입력</button>
+        </div>
+      </div>
+
+      <!-- 파일 업로드 모드 -->
+      <div class="mode-pane active panel-section" id="paneExcel">
+        <div class="section-head">파일 업로드</div>
+        <div class="group">
+          <label>📊 엑셀 파일 (.xlsx / .xls / .csv)</label>
+          <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" />
+        </div>
+        <div class="group">
+          <label>🔖 직인 이미지 (선택 · PNG 투명 배경 권장)</label>
+          <input type="file" id="sealFile" accept="image/png,image/jpg,image/jpeg,image/webp" />
+        </div>
+      </div>
+
+      <!-- 직접 입력 모드 -->
+      <div class="mode-pane panel-section" id="paneManual">
+        <div class="section-head">학교 정보 직접 입력</div>
+        <div class="group">
+          <label>학교명</label>
+          <input type="text" id="manualSchool" placeholder="강원과학고등학교" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;">연도</label>
+            <input type="text" id="manualYear" value="2026" />
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;">월</label>
+            <input type="text" id="manualMonth" placeholder="3" />
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;">일</label>
+            <input type="text" id="manualDay" placeholder="24" />
+          </div>
+        </div>
+        <div class="group">
+          <label>기탁 금액 (숫자만)</label>
+          <input type="text" id="manualAmount" placeholder="8000000" />
+        </div>
+        <div class="group">
+          <label>사용용도 세부문구</label>
+          <input type="text" id="manualDetail" value="장학금/1학기" />
+        </div>
+        <div class="group">
+          <label>🔖 직인 이미지 (선택 · PNG 투명 배경 권장)</label>
+          <input type="file" id="sealFileManual" accept="image/png,image/jpg,image/jpeg,image/webp" />
+        </div>
+      </div>
+
+      <!-- 기탁자 정보 -->
+      <div class="panel-section">
+        <div class="section-head">기탁자 정보</div>
+        <div class="group">
+          <label>성 명 / 법인명</label>
+          <input type="text" id="personName" value="(재)현송교육문화재단/김정일" />
+        </div>
+        <div class="group">
+          <label>주민등록번호 / 사업자번호</label>
+          <input type="text" id="bizNo" value="113-82-01510" />
+        </div>
+        <div class="group">
+          <label>주 소</label>
+          <input type="text" id="address" value="서울 구로구 경인로 661, 101동 1201호" />
+        </div>
+        <div class="group">
+          <label>전 화</label>
+          <input type="text" id="phone" value="02-2612-7150" />
+        </div>
+        <div class="group">
+          <label>기탁자명 (서명란에 표기)</label>
+          <input type="text" id="donorName" value="(재)현송교육문화재단" />
+        </div>
+        <div class="group">
+          <label>사용용도 세부문구</label>
+          <input type="text" id="detailText" value="장학금/1학기" />
+        </div>
+      </div>
+
+      <!-- 버튼 -->
+      <div class="panel-section">
+        <!-- 엑셀 모드 버튼 -->
+        <div id="btnsExcel">
+          <button class="btn primary" id="btnPdf" onclick="generateSeparatePDFs()">
+            💾 학교별 PDF 따로 저장 (ZIP)
+          </button>
+          <button class="btn secondary" onclick="downloadSampleExcel()">
+            📥 샘플 엑셀 다운로드
+          </button>
+          <button class="btn secondary" onclick="loadFirstRowPreview()">
+            🔄 첫 행 미리보기 반영
+          </button>
+        </div>
+        <!-- 직접입력 모드 버튼 -->
+        <div id="btnsManual" style="display:none;">
+          <button class="btn primary" onclick="applyManualPreview()">
+            👁️ 미리보기 반영
+          </button>
+          <button class="btn primary" id="btnPdfManual" onclick="generateManualPDF()">
+            💾 PDF 저장
+          </button>
+        </div>
+      </div>
+
+      <!-- 진행 -->
+      <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="status-bar" id="statusText">
+        엑셀을 올리면 첫 번째 학교 기준으로 미리보기를 보여드려요.
+      </div>
+
+      <!-- 엑셀 헤더 안내 -->
+      <div class="panel-section">
+        <div class="section-head">엑셀 헤더 예시</div>
+        <div class="sample-box">학교명 | 금액 | 연 | 월 | 일 | 세부용도(선택)
+강원과학고등학교 | 8000000 | 2026 | 3 | 24 | 장학금/1학기
+민족사관고등학교 | 5000000 | 2026 | 3 | 25 | 장학금/1학기</div>
+        <p style="font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.7">
+          • <b>세부용도</b> 열이 없으면 위의 '사용용도 세부문구' 값이 사용됩니다.<br>
+          • 직인은 PNG 투명 배경이면 가장 자연스럽습니다.<br>
+          • PDF는 학교별로 분리된 ZIP 파일로 저장됩니다.
+        </p>
+      </div>
+    </aside>
+
+    <!-- 미리보기 -->
+    <section class="preview-card">
+      <div class="preview-header">
+        <h2>📄 제출용 미리보기</h2>
+        <span class="badge" id="previewBadge">샘플</span>
+      </div>
+      <div class="a4-stage">
+        <div class="doc-page" id="docPage">
+
+          <!-- 규칙 번호 -->
+          <div class="rule-label">【규칙 별지 제2호 서식】</div>
+
+          <!-- 제목 -->
+          <div class="doc-title">학교발전기금기탁서</div>
+
+          <!-- 1. 기탁자 인적사항 -->
+          <div class="section-title">1. 기탁자 인적사항</div>
+          <table class="form-table">
+            <tr>
+              <th>성&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;명</th>
+              <td id="vPersonName">(재)현송교육문화재단/김정일</td>
+            </tr>
+            <tr>
+              <th>주민등록번호</th>
+              <td id="vBizNo">113-82-01510</td>
+            </tr>
+            <tr>
+              <th>주&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;소</th>
+              <td id="vAddress">서울 구로구 경인로 661, 101동 1201호</td>
+            </tr>
+            <tr>
+              <th>전&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;화</th>
+              <td id="vPhone">02-2612-7150</td>
+            </tr>
+          </table>
+
+          <!-- 2. 기탁 내역 -->
+          <div class="section-title">2. 기탁 내역</div>
+          <div style="font-size:13pt;margin-bottom:6px;">
+            &nbsp;&nbsp;가. 기금：금 <span id="vAmountKor" style="font-weight:700">팔백만원정</span>(<span id="vAmountNum">₩8,000,000</span>)
+          </div>
+          <div style="font-size:13pt;margin-bottom:4px;">
+            &nbsp;&nbsp;나. 물품·시설 기탁내역
+          </div>
+          <table class="item-table">
+            <thead>
+              <tr>
+                <th>물품·시설명</th>
+                <th>수&nbsp;&nbsp;&nbsp;량</th>
+                <th>단&nbsp;&nbsp;&nbsp;가</th>
+                <th>금&nbsp;&nbsp;&nbsp;액(원)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td></td><td></td><td></td><td></td></tr>
+              <tr><td></td><td></td><td></td><td></td></tr>
+            </tbody>
+          </table>
+
+          <!-- 3. 사용용도 -->
+          <div class="section-title">3. 사용용도(초·중등교육법시행령 제64조제2항관련)</div>
+          <div class="purpose-box">
+            □ 학교교육시설의 보수 및 확충 ( )<br>
+            □ 교육용 기자재 및 도서의 구입( )<br>
+            □ 학교체육활동 기타 학예활동의 지원( )<br>
+            <span class="checked">☑ 학생복지 및 학생자치활동의 지원( <span id="vDetailText">장학금/1학기</span> )</span>
+          </div>
+          <div class="note">※ □ 안에는 v 표시를 하고, ( )안에는 세부사용내역을 구체적으로 기재</div>
+
+          <!-- 본문 -->
+          <div class="body-text">
+            위와 같이 <span class="schoolAuto">강원과학고등학교</span>의 교육활동을 지원하기 위하여<br>
+            학교발전기금을 기탁합니다.
+          </div>
+
+          <!-- 날짜 -->
+          <div class="date-line">
+            <span id="vYear">2026</span>년 &nbsp;<span id="vMonth">03</span>월 &nbsp;<span id="vDay">24</span>일
+          </div>
+
+          <!-- 서명 -->
+          <div class="sign-area">
+            <span class="sign-label">기탁자&nbsp;&nbsp;</span>
+            <span class="sign-name" id="vDonorName">(재)현송교육문화재단</span>
+            <span class="sign-stamp-wrap">
+              <span class="sign-suffix">&nbsp;&nbsp;(서명 또는 인)</span>
+              <!-- 직인: (서명 또는 인) 텍스트 중앙에 position:absolute 로 겹침, 실제 3cm×3cm -->
+              <img id="sealPreview" class="seal-img" alt="직인" />
+            </span>
+          </div>
+
+          <!-- 수신 -->
+          <div class="footer-line">
+            <span class="schoolAuto">강원과학고등학교</span>운영위원회 위원장 귀하
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /wrap -->
+
+  <div class="mobile-actions" id="mobileActions">
+    <button class="btn secondary" type="button" onclick="scrollToPanel()">입력으로 이동</button>
+    <button class="btn primary" type="button" onclick="runPrimaryAction()">바로 실행</button>
+  </div>
+  <button class="fab-top" id="fabTop" type="button" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="맨 위로">↑</button>
+
+  <!-- 토스트 -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let excelRows = [];
+    let sealDataUrl = '';
+
+    /* ── 유틸 ── */
+    function pad2(v) { return String(v ?? '').padStart(2, '0'); }
+    function numberWithCommas(v) { return Number(v || 0).toLocaleString('ko-KR'); }
+
+    function amountToKorean(num) {
+      const units = ['', '만', '억', '조'];
+      const nums  = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+      const tens  = ['', '십', '백', '천'];
+      const n = Number(num || 0);
+      if (!n) return '영원정';
+      let value = n, unitIndex = 0, result = '';
+      while (value > 0) {
+        const chunk = value % 10000;
+        if (chunk > 0) {
+          const digits = String(chunk).padStart(4, '0').split('').map(Number);
+          let chunkText = '';
+          digits.forEach((d, i) => {
+            if (!d) return;
+            const pos = 3 - i;
+            chunkText += (d === 1 && pos > 0 ? '' : nums[d]) + tens[pos];
+          });
+          result = chunkText + units[unitIndex] + result;
+        }
+        value = Math.floor(value / 10000);
+        unitIndex++;
+      }
+      return result + '원정';
+    }
+
+    function normalizeRow(row) {
+      return {
+        school: row['학교명'] ?? row['학교'] ?? '',
+        amount: row['금액'] ?? 0,
+        year:   row['연'] ?? row['연도'] ?? '',
+        month:  row['월'] ?? '',
+        day:    row['일'] ?? '',
+        detail: row['세부용도(선택)'] ?? row['세부용도'] ?? row['사용용도'] ?? ''
+      };
+    }
+
+    function safeFileName(name) {
+      return String(name || '학교').replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, '_');
+    }
+
+    /* ── 상태 표시 ── */
+    function setStatus(text, type = '') {
+      const el = document.getElementById('statusText');
+      el.textContent = text;
+      el.className = 'status-bar' + (type ? ' ' + type : '');
+    }
+
+    function setProgress(pct) {
+      document.getElementById('progressBar').style.width = pct + '%';
+    }
+
+    function showToast(msg, type = '') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = 'toast' + (type ? ' ' + type : '');
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3200);
+    }
+
+    /* ── 미리보기 업데이트 ── */
+    function updatePreview(row) {
+      const n = normalizeRow(row);
+      const school = String(n.school || '학교명');
+      const amount = Number(n.amount || 0);
+      const year   = String(n.year  || '2026');
+      const month  = pad2(n.month || '1');
+      const day    = pad2(n.day   || '1');
+      const detail = String(n.detail || document.getElementById('detailText').value || '장학금');
+
+      document.getElementById('vPersonName').textContent = document.getElementById('personName').value;
+      document.getElementById('vBizNo').textContent      = document.getElementById('bizNo').value;
+      document.getElementById('vAddress').textContent    = document.getElementById('address').value;
+      document.getElementById('vPhone').textContent      = document.getElementById('phone').value;
+      document.getElementById('vAmountKor').textContent  = amountToKorean(amount);
+      document.getElementById('vAmountNum').textContent  = '₩' + numberWithCommas(amount);
+      document.getElementById('vDetailText').textContent = detail;
+      document.getElementById('vYear').textContent  = year;
+      document.getElementById('vMonth').textContent = month;
+      document.getElementById('vDay').textContent   = day;
+      document.getElementById('vDonorName').textContent  = document.getElementById('donorName').value;
+      document.querySelectorAll('.schoolAuto').forEach(el => el.textContent = school);
+
+      const sealEl = document.getElementById('sealPreview');
+      if (sealDataUrl) { sealEl.src = sealDataUrl; sealEl.classList.add('show'); }
+      else { sealEl.removeAttribute('src'); sealEl.classList.remove('show'); }
+    }
+
+    /* ── 엑셀 파싱 ── */
+    async function parseExcel(file) {
+      const buf = await file.arrayBuffer();
+      const wb  = XLSX.read(buf, { type: 'array' });
+      const ws  = wb.Sheets[wb.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(ws, { defval: '' });
+    }
+
+    document.getElementById('excelFile').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        excelRows = await parseExcel(file);
+        if (!excelRows.length) {
+          setStatus('데이터 행이 없어요. 헤더 아래에 학교 데이터를 넣어주세요.', 'error');
+          return;
+        }
+        updatePreview(excelRows[0]);
+        document.getElementById('previewBadge').textContent = `1 / ${excelRows.length}`;
+        setStatus(`✅ 엑셀 로드 완료 — 총 ${excelRows.length}개 학교, 첫 번째 학교 미리보기 반영`, 'done');
+      } catch (err) {
+        console.error(err);
+        setStatus('엑셀을 읽는 중 오류가 발생했어요. 파일 형식·헤더명을 확인해주세요.', 'error');
+      }
+    });
+
+    document.getElementById('sealFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) { sealDataUrl = ''; return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        sealDataUrl = reader.result;
+        updatePreview(excelRows[0] || { 학교명: '강원과학고등학교', 금액: 8000000, 연: 2026, 월: 3, 일: 24 });
+        setStatus('직인 이미지가 반영됐어요.', 'done');
+      };
+      reader.readAsDataURL(file);
+    });
+
+    let currentMode = 'excel'; /* 'excel' | 'manual' */
+
+    /* ── 탭 전환 ── */
+    function switchMode(mode) {
+      currentMode = mode;
+      /* 탭 버튼 */
+      document.querySelectorAll('.mode-tab').forEach((t, i) => {
+        t.classList.toggle('active', (i === 0 && mode === 'excel') || (i === 1 && mode === 'manual'));
+      });
+      /* 패널 */
+      document.getElementById('paneExcel').classList.toggle('active',  mode === 'excel');
+      document.getElementById('paneManual').classList.toggle('active', mode === 'manual');
+      /* 버튼 */
+      document.getElementById('btnsExcel').style.display  = mode === 'excel'  ? '' : 'none';
+      document.getElementById('btnsManual').style.display = mode === 'manual' ? '' : 'none';
+
+      /* 직접입력 모드 진입 시 현재 입력값으로 미리보기 즉시 반영 */
+      if (mode === 'manual') applyManualPreview();
+    }
+
+    /* ── 직접입력 → 미리보기 반영 ── */
+    function getManualRow() {
+      return {
+        학교명: document.getElementById('manualSchool').value  || '학교명',
+        금액:   Number(document.getElementById('manualAmount').value) || 0,
+        연:     document.getElementById('manualYear').value   || '2026',
+        월:     document.getElementById('manualMonth').value  || '1',
+        일:     document.getElementById('manualDay').value    || '1',
+        '세부용도(선택)': document.getElementById('manualDetail').value || document.getElementById('detailText').value || '장학금'
+      };
+    }
+
+    function applyManualPreview() {
+      const row = getManualRow();
+      updatePreview(row);
+      document.getElementById('previewBadge').textContent = '직접입력';
+      setStatus(`미리보기 반영 완료 — ${row['학교명']}`, 'done');
+    }
+
+    /* ── 직접입력 직인 ── */
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('sealFileManual').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) { sealDataUrl = ''; return; }
+        const reader = new FileReader();
+        reader.onload = () => {
+          sealDataUrl = reader.result;
+          applyManualPreview();
+          setStatus('직인 이미지가 반영됐어요.', 'done');
+        };
+        reader.readAsDataURL(file);
+      });
+
+      /* 직접입력 필드 실시간 반영 */
+      ['manualSchool','manualYear','manualMonth','manualDay','manualAmount','manualDetail'].forEach(id => {
+        document.getElementById(id).addEventListener('input', () => {
+          if (currentMode === 'manual') applyManualPreview();
+        });
+      });
+    });
+
+    /* ── 직접입력 PDF 저장 (단일 파일) ── */
+    async function generateManualPDF() {
+      const row = getManualRow();
+      const school = String(row['학교명'] || '').trim();
+      if (!school || school === '학교명') {
+        setStatus('학교명을 입력해주세요.', 'error');
+        showToast('⚠️ 학교명을 입력해주세요!', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnPdfManual');
+      btn.disabled = true;
+      setStatus('PDF 생성 중...', 'active');
+
+      /* 미리보기 최신화 */
+      applyManualPreview();
+      await new Promise(r => setTimeout(r, 120));
+
+      const canvas = await html2canvas(document.getElementById('docPage'), {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        allowTaint: true
+      });
+
+      const year = String(row['연'] || '2026');
+      const pdfBytes = await canvasToPdfBytes(canvas, 210,
+        Math.round(canvas.height / canvas.width * 210));
+
+      const fileName = `${year}_${safeFileName(school)}_기탁서.pdf`;
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = fileName;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+
+      setStatus(`✅ PDF 저장 완료 — ${fileName}`, 'done');
+      showToast(`🎉 PDF 저장 완료!`, 'success');
+      btn.disabled = false;
+    }
+    function loadFirstRowPreview() {
+      if (!excelRows.length) {
+        setStatus('먼저 엑셀 파일을 업로드해주세요.', 'error');
+        showToast('⚠️ 엑셀 파일을 먼저 업로드해주세요!', 'error');
+        return;
+      }
+      updatePreview(excelRows[0]);
+      setStatus('첫 번째 학교 기준으로 미리보기를 다시 반영했어요.', 'done');
+      showToast('🔄 첫 행 미리보기 반영 완료!', 'success');
+    }
+
+    /* ── 샘플 엑셀 다운로드 ── */
+    function downloadSampleExcel() {
+      try {
+        const rows = [
+          { 학교명: '강원과학고등학교', 금액: 8000000, 연: 2026, 월: 3, 일: 24, '세부용도(선택)': '장학금/1학기' },
+          { 학교명: '민족사관고등학교', 금액: 5000000, 연: 2026, 월: 3, 일: 25, '세부용도(선택)': '장학금/1학기' },
+          { 학교명: '한국과학영재학교', 금액: 3000000, 연: 2026, 월: 3, 일: 25, '세부용도(선택)': '장학금/1학기' },
+        ];
+        const ws = XLSX.utils.json_to_sheet(rows);
+
+        /* 컬럼 너비 */
+        ws['!cols'] = [
+          { wch: 22 }, { wch: 12 }, { wch: 8 }, { wch: 6 }, { wch: 6 }, { wch: 18 }
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '기탁서데이터');
+
+        /* blob → a 태그 방식으로 다운로드 (브라우저 호환성 ↑) */
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob  = new Blob([wbout], { type: 'application/octet-stream' });
+        const url   = URL.createObjectURL(blob);
+        const a     = document.createElement('a');
+        a.href      = url;
+        a.download  = '기탁서_샘플양식.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('📥 샘플 엑셀 저장 완료!', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('❌ 엑셀 저장 중 오류 발생', 'error');
+      }
+    }
+
+    /* ── PDF 일괄 생성 (html2canvas 방식 → 한글 완벽 지원) ── */
+    async function generateSeparatePDFs() {
+      if (!excelRows.length) {
+        setStatus('먼저 엑셀 파일을 업로드해주세요.', 'error');
+        showToast('⚠️ 엑셀 파일을 먼저 업로드해주세요!', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnPdf');
+      btn.disabled = true;
+      setProgress(0);
+
+      const zip = new JSZip();
+      const total = excelRows.length;
+      const defaultDetail = document.getElementById('detailText').value || '장학금';
+
+      setStatus(`PDF 생성 중... (0 / ${total})`, 'active');
+
+      for (let i = 0; i < total; i++) {
+        const row    = normalizeRow(excelRows[i]);
+        const school = String(row.school || '').trim();
+        if (!school) continue;
+
+        const year   = String(row.year || '2026');
+        const month  = pad2(row.month || '');
+        const day    = pad2(row.day   || '');
+        const detail = String(row.detail || defaultDetail);
+
+        /* 문서 DOM 업데이트 */
+        updatePreview({
+          학교명: school,
+          금액:   row.amount,
+          연:     row.year,
+          월:     row.month,
+          일:     row.day,
+          '세부용도(선택)': detail
+        });
+
+        /* 잠깐 렌더 대기 */
+        await new Promise(r => setTimeout(r, 120));
+
+        /* html2canvas 캡처 */
+        const canvas = await html2canvas(document.getElementById('docPage'), {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          allowTaint: true
+        });
+
+        /* Canvas → PDF (A4) */
+        const imgData   = canvas.toDataURL('image/jpeg', 0.97);
+        const pdfWidth  = 210; /* mm */
+        const pdfHeight = Math.round(canvas.height / canvas.width * pdfWidth);
+
+        /* jsPDF via CDN이 없으므로 직접 최소 PDF 바이너리 생성 */
+        const pdfBytes = await canvasToPdfBytes(canvas, pdfWidth, pdfHeight);
+
+        const fileName = `${year}_${safeFileName(school)}_기탁서.pdf`;
+        zip.file(fileName, pdfBytes);
+
+        const pct = Math.round((i + 1) / total * 100);
+        setProgress(pct);
+        setStatus(`PDF 생성 중... (${i + 1} / ${total}) — ${school}`, 'active');
+      }
+
+      /* ZIP 생성 & 다운로드 */
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url     = URL.createObjectURL(zipBlob);
+      const a       = document.createElement('a');
+      a.href        = url;
+      a.download    = '학교별_기탁서_PDF.zip';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      /* 미리보기 복원 */
+      updatePreview(excelRows[0]);
+      setProgress(100);
+      setStatus(`✅ 완료! ${total}개 학교 PDF가 ZIP으로 저장됐어요.`, 'done');
+      showToast(`🎉 ${total}개 PDF 생성 완료!`, 'success');
+      btn.disabled = false;
+    }
+
+    /* ── Canvas → PDF 바이트 변환 (순수 JS, 한글 완벽 지원) ── */
+    async function canvasToPdfBytes(canvas, pdfWidthMm, pdfHeightMm) {
+      /*
+        최소한의 PDF 1.4 구조를 직접 만들어서 한글 깨짐 없이 이미지 삽입.
+        jsPDF의 한글 폰트 의존 없이 Canvas 이미지를 그대로 PDF에 임베딩.
+      */
+      const imgData    = canvas.toDataURL('image/jpeg', 0.97);
+      const base64     = imgData.split(',')[1];
+      const imgBytes   = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+      const imgLen     = imgBytes.length;
+
+      const W = Math.round(pdfWidthMm  / 25.4 * 72); /* pt */
+      const H = Math.round(pdfHeightMm / 25.4 * 72);
+
+      const enc = new TextEncoder();
+
+      const obj1 = enc.encode(`1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n`);
+      const obj2 = enc.encode(`2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n`);
+      const obj3 = enc.encode(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Contents 4 0 R /Resources << /XObject << /Im1 5 0 R >> >> >>\nendobj\n`);
+
+      const stream = enc.encode(`q ${W} 0 0 ${H} 0 0 cm /Im1 Do Q`);
+      const obj4 = enc.encode(`4 0 obj\n<< /Length ${stream.length} >>\nstream\n`);
+      const obj4e = enc.encode(`\nendstream\nendobj\n`);
+
+      const imgHeader = enc.encode(`5 0 obj\n<< /Type /XObject /Subtype /Image /Width ${canvas.width} /Height ${canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imgLen} >>\nstream\n`);
+      const imgFooter = enc.encode(`\nendstream\nendobj\n`);
+
+      /* xref 오프셋 계산 */
+      let off = enc.encode('%PDF-1.4\n').length;
+      const offsets = [];
+
+      offsets.push(off); off += obj1.length;
+      offsets.push(off); off += obj2.length;
+      offsets.push(off); off += obj3.length;
+      offsets.push(off); off += obj4.length + stream.length + obj4e.length;
+      offsets.push(off); off += imgHeader.length + imgLen + imgFooter.length;
+
+      const xrefPos = off;
+      const xref = `xref\n0 6\n0000000000 65535 f \n` +
+        offsets.map(o => String(o).padStart(10,'0') + ' 00000 n ').join('\n') + '\n';
+      const trailer = `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF\n`;
+
+      /* バイナリ結合 */
+      const header = enc.encode('%PDF-1.4\n');
+      const xrefBytes    = enc.encode(xref + trailer);
+      const totalLen = header.length + obj1.length + obj2.length + obj3.length
+                     + obj4.length + stream.length + obj4e.length
+                     + imgHeader.length + imgLen + imgFooter.length
+                     + xrefBytes.length;
+
+      const out = new Uint8Array(totalLen);
+      let pos = 0;
+      const write = (b) => { out.set(b, pos); pos += b.length; };
+      write(header);
+      write(obj1); write(obj2); write(obj3);
+      write(obj4); write(stream); write(obj4e);
+      write(imgHeader); write(imgBytes); write(imgFooter);
+      write(xrefBytes);
+
+      return out;
+    }
+
+
+
+    function isStandaloneMode() {
+      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+
+    function updateAppModeUI() {
+      const chip = document.getElementById('installChip');
+      const helper = document.getElementById('mobileHelper');
+      if (isStandaloneMode()) {
+        if (chip) chip.textContent = '홈 화면 앱으로 실행 중';
+        if (helper) helper.style.display = 'none';
+        document.body.classList.add('standalone-mode');
+      }
+    }
+
+    function scrollToPanel() {
+      const panel = document.querySelector('.panel');
+      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function runPrimaryAction() {
+      if (currentMode === 'manual') generateManualPDF();
+      else generateSeparatePDFs();
+    }
+
+    function handleHeaderCompact() {
+      const header = document.getElementById('appHeader');
+      if (!header) return;
+      header.classList.toggle('compact', window.scrollY > 16);
+    }
+
+    async function registerServiceWorker() {
+      if (!('serviceWorker' in navigator)) return;
+      try {
+        await navigator.serviceWorker.register('./service-worker.js');
+      } catch (err) {
+        console.warn('Service worker registration failed:', err);
+      }
+    }
+
+    /* ── 초기 미리보기 ── */
+    updatePreview({ 학교명: '강원과학고등학교', 금액: 8000000, 연: 2026, 월: 3, 일: 24, '세부용도(선택)': '장학금/1학기' });
+
+    /* ── 입력 실시간 반영 ── */
+    updateAppModeUI();
+    registerServiceWorker();
+    window.addEventListener('scroll', handleHeaderCompact, { passive: true });
+    handleHeaderCompact();
+
+    ['personName','bizNo','address','phone','donorName','detailText'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        if (currentMode === 'manual') {
+          applyManualPreview();
+        } else {
+          const src = excelRows[0] || { 학교명: '강원과학고등학교', 금액: 8000000, 연: 2026, 월: 3, 일: 24 };
+          updatePreview(src);
+        }
+      });
+    });
+  </script>
+  </div>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "name": "학교발전기금기탁서 생성기",
+  "short_name": "기탁서 생성기",
+  "start_url": "./학교발전기금기탁서_아이폰앱형.html",
+  "display": "standalone",
+  "background_color": "#f0f2f8",
+  "theme_color": "#1e40af",
+  "lang": "ko",
+  "description": "학교발전기금기탁서를 모바일에서 앱처럼 생성하고 PDF로 저장하는 도구",
+  "icons": [
+    {
+      "src": "./app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
